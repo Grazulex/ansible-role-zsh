@@ -1,0 +1,62 @@
+---
+- name: Install initial composants
+  apt: 
+   name: ['zsh', 'neofetch', 'git', 'curl', 'wget'] 
+   state: present
+- name: Check if .zshrc exists
+  stat:
+    path: ~/.zshrc
+  register: stat_rc_result
+- name: Check if .oh-my-zsh exists
+  stat:
+    path: ~/.oh-my-zsh
+  register: stat_oh_my_zsh_result
+- name: Cloning  oh-my-zsh
+  git:
+    repo=https://github.com/robbyrussell/oh-my-zsh
+    dest=~/.oh-my-zsh
+  when: not stat_oh_my_zsh_result.stat.exists
+- name: pluging zsh autosuggest
+  git:
+    repo=https://github.com/zsh-users/zsh-autosuggestions.git
+    dest=~/.oh-my-zsh/plugins/zsh-autosuggestions 
+- name: pluging zsh high
+  git:
+    repo=https://github.com/zsh-users/zsh-syntax-highlighting.git
+    dest=~/.oh-my-zsh/plugins/zsh-syntax-highlighting
+- name: Creating new ~/.zshrc
+  copy:
+    src=~/.oh-my-zsh/templates/zshrc.zsh-template
+    dest=~/.zshrc
+  when: not stat_rc_result.stat.exists
+- name: replace thema
+  lineinfile:
+    path: ~/.zshrc
+    regexp: '^(.*)ZSH_THEME="robbyrussell"(.*)$'
+    line: 'ZSH_THEME="dallas"'
+    backrefs: yes
+- name: replace plugin
+  lineinfile:
+    path: ~/.zshrc
+    regexp: 'plugins=(git)'
+    line: 'plugins=(git zsh-autosuggestions zsh-syntax-highlighting)'
+    backrefs: yes
+- name: Add autostart
+  blockinfile:
+    dest: ~/.zshrc
+    block: |
+      clear 
+      neofetch
+    backup: yes 
+- name: put zsh default bash
+  shell: chsh -s $(which zsh)
+- name: reload zsh
+  shell: source ~/.zshrc
+  args:
+    executable: /bin/bash
+- name: Get if reboot is required
+  register: file
+  stat: path=/var/run/reboot-required get_md5=no
+- name: Show if server need restart
+  reboot:
+  when: file.stat.exists == true
